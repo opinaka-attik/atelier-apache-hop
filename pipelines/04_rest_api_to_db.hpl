@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pipeline>
+  <info>
+    <name>04_rest_api_to_db</name>
+    <description>Consommer une API REST et stocker les données en base</description>
+    <pipeline_type>Normal</pipeline_type>
+  </info>
+  <transforms>
+    <transform>
+      <name>Appel API REST</name>
+      <type>Rest</type>
+      <url>https://jsonplaceholder.typicode.com/users</url>
+      <method>GET</method>
+      <fields/>
+    </transform>
+    <transform>
+      <name>Parser JSON</name>
+      <type>JsonInput</type>
+      <fields>
+        <field><column_name>id</column_name><path>$.id</path></field>
+        <field><column_name>name</column_name><path>$.name</path></field>
+        <field><column_name>email</column_name><path>$.email</path></field>
+        <field><column_name>phone</column_name><path>$.phone</path></field>
+        <field><column_name>website</column_name><path>$.website</path></field>
+      </fields>
+    </transform>
+    <transform>
+      <name>Nettoyer champs</name>
+      <type>SelectValues</type>
+      <fields>
+        <field><name>id</name><type>Integer</type></field>
+        <field><name>name</name><type>String</type></field>
+        <field><name>email</name><type>String</type></field>
+        <field><name>phone</name><type>String</type></field>
+        <field><name>website</name><type>String</type></field>
+      </fields>
+    </transform>
+    <transform>
+      <name>Inserer PostgreSQL</name>
+      <type>TableOutput</type>
+      <connection>postgres_hop</connection>
+      <schema>public</schema>
+      <table>api_users</table>
+      <commit>100</commit>
+      <truncate>Y</truncate>
+      <fields>
+        <field><stream_name>id</stream_name><table_name>id</table_name></field>
+        <field><stream_name>name</stream_name><table_name>name</table_name></field>
+        <field><stream_name>email</stream_name><table_name>email</table_name></field>
+        <field><stream_name>phone</stream_name><table_name>phone</table_name></field>
+        <field><stream_name>website</stream_name><table_name>website</table_name></field>
+      </fields>
+    </transform>
+    <transform>
+      <name>Log résultat</name>
+      <type>WriteToLog</type>
+      <loglevel>Basic</loglevel>
+      <displayHeader>Y</displayHeader>
+      <logmessage>Utilisateurs API insérés</logmessage>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <fields/>
+    </transform>
+  </transforms>
+  <order>
+    <hop><from>Appel API REST</from><to>Parser JSON</to><enabled>Y</enabled></hop>
+    <hop><from>Parser JSON</from><to>Nettoyer champs</to><enabled>Y</enabled></hop>
+    <hop><from>Nettoyer champs</from><to>Inserer PostgreSQL</to><enabled>Y</enabled></hop>
+    <hop><from>Inserer PostgreSQL</from><to>Log résultat</to><enabled>Y</enabled></hop>
+  </order>
+  <notepads/>
+</pipeline>
