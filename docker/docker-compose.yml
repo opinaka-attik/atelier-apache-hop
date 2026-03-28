@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  hop:
+    image: apache/hop:2.9.0
+    container_name: apache-hop
+    ports:
+      - "8080:8080"
+    environment:
+      - HOP_SERVER_USER=admin
+      - HOP_SERVER_PASS=admin
+      - HOP_LOG_LEVEL=Basic
+    volumes:
+      - hop_data:/home/hop
+      - ./pipelines:/home/hop/pipelines
+      - ./data:/home/hop/data
+    networks:
+      - hop_network
+
+  # Base de donnees pour les exercices ETL
+  postgres:
+    image: postgres:15-alpine
+    container_name: hop-postgres
+    environment:
+      POSTGRES_USER: hopuser
+      POSTGRES_PASSWORD: hoppass
+      POSTGRES_DB: hopdb
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hop_network
+
+volumes:
+  hop_data:
+  pg_data:
+
+networks:
+  hop_network:
+    driver: bridge
