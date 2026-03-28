@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Module 02 - CSV vers PostgreSQL avec nettoyage
+  Concepts : CSV Input, Filter Rows, String Operations, Table Output
+  Connexion DB : hopuser/hoppass@localhost:5433/hopdb
+-->
+<pipeline>
+  <info>
+    <name>02_csv_to_postgres</name>
+    <description>Module 02 - Chargement CSV + nettoyage + insertion Postgres</description>
+    <pipeline_type>Normal</pipeline_type>
+  </info>
+
+  <transforms>
+    <!-- Transform 1 : Lire le CSV clients -->
+    <transform>
+      <name>Lire CSV clients</name>
+      <type>CSVInput</type>
+      <description>Lit le fichier clients.csv depuis /home/hop/data/</description>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <filename>/home/hop/data/clients.csv</filename>
+      <filename_field/>
+      <rownum_field/>
+      <include_filename>N</include_filename>
+      <separator>,</separator>
+      <enclosure>"</enclosure>
+      <header>Y</header>
+      <nrRowsToSkip>0</nrRowsToSkip>
+      <maxColumns>50</maxColumns>
+      <encoding>UTF-8</encoding>
+      <lazy_conversion>N</lazy_conversion>
+      <inputFields>
+        <inputField><name>nom</name><type>String</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>both</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>prenom</name><type>String</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>both</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>email</name><type>String</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>both</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>telephone</name><type>String</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>both</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>ville</name><type>String</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>both</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>age</name><type>Integer</type><format/><length>-1</length><precision>-1</precision><currency/><decimal/><group/><trim_type>none</trim_type><repeat>N</repeat></inputField>
+        <inputField><name>revenu</name><type>Number</type><format/><length>-1</length><precision>-1</precision><currency/><decimal>.</decimal><group/><trim_type>none</trim_type><repeat>N</repeat></inputField>
+      </inputFields>
+    </transform>
+
+    <!-- Transform 2 : Filtrer les lignes avec email vide -->
+    <transform>
+      <name>Filtrer emails vides</name>
+      <type>FilterRows</type>
+      <description>Supprime les lignes ou email est NULL ou vide</description>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <send_true_to>Concatener nom complet</send_true_to>
+      <send_false_to>Log rejets</send_false_to>
+      <compare>
+        <condition>
+          <negated>N</negated>
+          <leftvalue>email</leftvalue>
+          <function>IS NOT NULL</function>
+          <rightvalue/>
+        </condition>
+      </compare>
+    </transform>
+
+    <!-- Transform 3 : Creer champ nom_complet -->
+    <transform>
+      <name>Concatener nom complet</name>
+      <type>ScriptValueMod</type>
+      <description>Cree le champ nom_complet = prenom + espace + nom</description>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <compatible>N</compatible>
+      <optimizationLevel>9</optimizationLevel>
+      <jsScripts>
+        <jsScript>
+          <jsScript_type>0</jsScript_type>
+          <jsScript_name>Script 1</jsScript_name>
+          <jsScript_script>var nom_complet = prenom.getString() + ' ' + nom.getString();
+var segment = 'standard';
+if (revenu.getNumber() > 70000) segment = 'vip';
+else if (revenu.getNumber() > 40000) segment = 'premium';</jsScript_script>
+        </jsScript>
+      </jsScripts>
+      <fields>
+        <field><name>nom_complet</name><rename>nom_complet</rename><type>String</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
+        <field><name>segment</name><rename>segment</rename><type>String</type><length>-1</length><precision>-1</precision><replace>N</replace></field>
+      </fields>
+    </transform>
+
+    <!-- Transform 4 : Ecrire dans Postgres -->
+    <transform>
+      <name>Ecrire dans Postgres</name>
+      <type>TableOutput</type>
+      <description>Insere dans la table clients_clean de hopdb</description>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <connection>hop-postgres</connection>
+      <schema>public</schema>
+      <table>clients_clean</table>
+      <commit>1000</commit>
+      <truncate>N</truncate>
+      <ignore_errors>N</ignore_errors>
+      <use_batch>Y</use_batch>
+      <specify_fields>Y</specify_fields>
+      <fields>
+        <field><column_name>nom_complet</column_name><stream_name>nom_complet</stream_name></field>
+        <field><column_name>email</column_name><stream_name>email</stream_name></field>
+        <field><column_name>telephone</column_name><stream_name>telephone</stream_name></field>
+        <field><column_name>ville</column_name><stream_name>ville</stream_name></field>
+        <field><column_name>age</column_name><stream_name>age</stream_name></field>
+        <field><column_name>revenu</column_name><stream_name>revenu</stream_name></field>
+        <field><column_name>segment</column_name><stream_name>segment</stream_name></field>
+      </fields>
+    </transform>
+
+    <!-- Transform 5 : Log des rejets -->
+    <transform>
+      <name>Log rejets</name>
+      <type>WriteToLog</type>
+      <loglevel>Basic</loglevel>
+      <displayHeader>Y</displayHeader>
+      <logmessage>REJET - Email manquant</logmessage>
+      <distribute>Y</distribute>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <fields/>
+    </transform>
+  </transforms>
+
+  <order>
+    <hop><from>Lire CSV clients</from><to>Filtrer emails vides</to><enabled>Y</enabled></hop>
+    <hop><from>Filtrer emails vides</from><to>Concatener nom complet</to><enabled>Y</enabled></hop>
+    <hop><from>Concatener nom complet</from><to>Ecrire dans Postgres</to><enabled>Y</enabled></hop>
+    <hop><from>Filtrer emails vides</from><to>Log rejets</to><enabled>Y</enabled></hop>
+  </order>
+
+  <notepads/>
+</pipeline>
