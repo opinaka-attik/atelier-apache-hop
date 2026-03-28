@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Module 01 - Hello Pipeline
+  Concepts : Generate Rows, Write to Log, pipeline de base
+  Importer dans Hop GUI : File > Open > selectionner ce fichier
+-->
+<pipeline>
+  <info>
+    <name>01_hello_pipeline</name>
+    <description>Module 01 - Premier pipeline Apache Hop : Generate Rows + Log</description>
+    <pipeline_type>Normal</pipeline_type>
+  </info>
+
+  <parameters>
+    <parameter>
+      <name>NOM</name>
+      <default_value>Monde</default_value>
+      <description>Nom a afficher dans le message</description>
+    </parameter>
+  </parameters>
+
+  <transforms>
+    <!-- Transform 1 : Genere des lignes de donnees statiques -->
+    <transform>
+      <name>Generer donnees</name>
+      <type>RowGenerator</type>
+      <description>Genere 5 lignes de donnees exemple</description>
+      <distribute>Y</distribute>
+      <custom_distribution/>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <fields>
+        <field>
+          <name>message</name>
+          <type>String</type>
+          <format/>
+          <currency/>
+          <decimal/>
+          <group/>
+          <nullif>Bonjour depuis Apache Hop !</nullif>
+          <length>-1</length>
+          <precision>-1</precision>
+        </field>
+        <field>
+          <name>timestamp</name>
+          <type>Date</type>
+          <format>yyyy-MM-dd HH:mm:ss</format>
+          <currency/>
+          <decimal/>
+          <group/>
+          <nullif>2026-03-28 21:00:00</nullif>
+          <length>-1</length>
+          <precision>-1</precision>
+        </field>
+        <field>
+          <name>index</name>
+          <type>Integer</type>
+          <format/>
+          <currency/>
+          <decimal/>
+          <group/>
+          <nullif>1</nullif>
+          <length>-1</length>
+          <precision>-1</precision>
+        </field>
+      </fields>
+      <limit>5</limit>
+      <never_ending>N</never_ending>
+      <interval_in_ms>50000</interval_in_ms>
+      <row_time_field>now</row_time_field>
+      <last_time_field>FiveSecondsAgo</last_time_field>
+    </transform>
+
+    <!-- Transform 2 : Ecrit dans les logs -->
+    <transform>
+      <name>Ecrire dans log</name>
+      <type>WriteToLog</type>
+      <description>Affiche les donnees dans la console Hop</description>
+      <distribute>Y</distribute>
+      <custom_distribution/>
+      <copies>1</copies>
+      <partitioning><method>none</method><schema_name/></partitioning>
+      <loglevel>Basic</loglevel>
+      <displayHeader>Y</displayHeader>
+      <limitRows>N</limitRows>
+      <limitRowsNumber>0</limitRowsNumber>
+      <logmessage>MODULE 01 - Pipeline OK</logmessage>
+      <fields><field><name>message</name></field><field><name>timestamp</name></field><field><name>index</name></field></fields>
+    </transform>
+  </transforms>
+
+  <order>
+    <hop>
+      <from>Generer donnees</from>
+      <to>Ecrire dans log</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+
+  <notepads/>
+</pipeline>
